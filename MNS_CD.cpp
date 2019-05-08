@@ -1,9 +1,9 @@
 // Code developed by Huibin Ke from UW-Madison for the evolution of Mn-Ni-Si precipitates in Reactor Pressure Vessel
 // stees.
+#include <cmath>
 #include <cvode/cvode.h>      /* main integrator header file */
 #include <cvode/cvode_band.h> /* band solver header */
 #include <fstream>
-#include <math.h>
 #include <nvector/nvector_serial.h> /* serial N_Vector types, fct. and macros */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +21,11 @@ InputMaterial IMaterial; /*Defined in Input.h, including material information*/
 InputProperty IProp;     /*Defined in Input.h, including all other parameters used in model*/
 
 using namespace std;
+
+double sqr(double a)
+{
+  return a * a;
+}
 
 /*function defs*/
 
@@ -125,8 +130,8 @@ int main()
     O_file << endl;
     printYVector(y0); /*Write the particle size distribution of each phase into a seperate file*/
     CVodeFree(&cvode_mem);
-    ts = ts + tout;        /*Calculate the start time of next run*/
-    tout = pow(10, i / 9); /*Define the solution time for next run*/
+    ts = ts + tout;             /*Calculate the start time of next run*/
+    tout = std::pow(10, i / 9); /*Define the solution time for next run*/
   }
   N_VDestroy_Serial(y0);
   return 0;
@@ -147,11 +152,11 @@ static void initParams()
   GetRED(D, Flux); /*Calculate radiation enhanced diffusion coefficients*/
 
   for (int p = 0; p < numPhase; p++)
-    aP[p] = pow((3 * IMaterial->cVol[p]) / (4 * pi), 1. / 3.); /*Effective atomic radius in precipitate*/
+    aP[p] = std::cbrt((3 * IMaterial->cVol[p]) / (4 * pi)); /*Effective atomic radius in precipitate*/
 
   for (int p = 0; p < numPhase; p++)
     for (int c = 0; c < numComp; c++)
-      nu[p][c] = pow(IMaterial->X[p][c], 2); /*Square of precipitate composition*/
+      nu[p][c] = sqr(IMaterial->X[p][c]); /*Square of precipitate composition*/
 
   return;
 }
@@ -170,13 +175,13 @@ static void GetRED(realtype D[numComp], realtype Flux)
   if (Flux > IProp->Rflux)
   {
     Eta = 16 * pi * IProp->rv * IProp->DCB * IProp->SigmaDpa * IProp->Rflux / IMaterial->aVol / IProp->DV /
-          pow(IProp->DDP, 2);
-    Gs = 2.0 / Eta * (pow(1 + Eta, 0.5) - 1.0) * pow((IProp->Rflux / Flux), IProp->p_factor);
+          sqr(IProp->DDP);
+    Gs = 2.0 / Eta * (std::sqrt(1 + Eta) - 1.0) * std::pow((IProp->Rflux / Flux), IProp->p_factor);
   } /*When flux is lower than reference flux, use Eq. SI-19 and SI-20 to calculate gs*/
   else
   {
-    Eta = 16 * pi * IProp->rv * IProp->DCB * IProp->SigmaDpa * Flux / IMaterial->aVol / IProp->DV / pow(IProp->DDP, 2);
-    Gs = 2.0 / Eta * (pow(1 + Eta, 0.5) - 1.0);
+    Eta = 16 * pi * IProp->rv * IProp->DCB * IProp->SigmaDpa * Flux / IMaterial->aVol / IProp->DV / sqr(IProp->DDP);
+    Gs = 2.0 / Eta * (std::sqrt(1 + Eta) - 1.0);
   }
 
   Cvr = IProp->DCB * Flux * IProp->SigmaDpa * Gs /
@@ -223,7 +228,7 @@ static void getbeta(realtype size[numClass], realtype beta[numPhase][numClass])
 {
   for (int p = 0; p < numPhase; p++)
     for (int i = 0; i < numClass; i++)
-      beta[p][i] = (4 * pi * aP[p] * pow(size[i], (1. / 3.))) / IMaterial->aVol;
+      beta[p][i] = (4 * pi * aP[p] * std::cbrt(size[i])) / IMaterial->aVol;
 
   return;
 }
@@ -253,7 +258,7 @@ static void getRadClust(realtype size[numClass], realtype radClust[numPhase][num
 
   for (int p = 0; p < numPhase; p++)
     for (int i = 0; i < numClass; i++)
-      radClust[p][i] = pow(3 * IMaterial->cVol[p] * size[i] / (4 * pi), 1. / 3.);
+      radClust[p][i] = std::cbrt(3 * IMaterial->cVol[p] * size[i] / (4 * pi));
 
   return;
 }
@@ -271,9 +276,9 @@ static void getDelG(realtype size[numClass], realtype radClust[numPhase][numClas
   for (int p = 0; p < numPhase; p++)
     for (int i = 1; i < numClass; i++)
     {
-      delta = -((IMaterial->sig[p] * 4 * pi * pow(radClust[p][i - 1], TWO)) -
-                (IMaterial->sig[p] * 4 * pi * pow(radClust[p][i], TWO)));
-      delG[p][i] = exp(delta / (kb * ICond->Temp));
+      delta = -((IMaterial->sig[p] * 4.0 * pi * sqr(radClust[p][i - 1])) -
+                (IMaterial->sig[p] * 4.0 * pi * sqr(radClust[p][i])));
+      delG[p][i] = std::exp(delta / (kb * ICond->Temp));
     }
 
   return;
@@ -300,7 +305,7 @@ static void getInitVals(realtype y0[neq])
   {
     solProd[p] = 1;
     for (int c = 0; c < numComp; c++)
-      solProd[p] = solProd[p] * pow(IMaterial->C0[c], IMaterial->X[p][c]);
+      solProd[p] = solProd[p] * std::pow(IMaterial->C0[c], IMaterial->X[p][c]);
     y0[p * numClass] = solProd[p]; /*Effective monomer concentration, based on Eq. SI-15*/
   }
   return;
@@ -323,7 +328,7 @@ static void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass
   {
     solP[p] = 1;
     for (int c = 0; c < numComp; c++)
-      solP[p] = solP[p] * pow(yd[neq - numComp + c], IMaterial->X[p][c]); /*Calculate solute product*/
+      solP[p] = solP[p] * std::pow(yd[neq - numComp + c], IMaterial->X[p][c]); /*Calculate solute product*/
   }
 
   for (int p = numPhase; p < numCalcPhase; p++)
@@ -400,7 +405,7 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     pref = p % numPhase;
     solP[pref] = 1;
     for (int c = 0; c < numComp; c++)
-      solP[pref] = solP[pref] * pow(yd[neq - numComp + c], IMaterial->X[pref][c]); /*solute product*/
+      solP[pref] = solP[pref] * std::pow(yd[neq - numComp + c], IMaterial->X[pref][c]); /*solute product*/
   }
 
   /*The next three lines is the generation of clusters in cascade damage*/
@@ -457,7 +462,7 @@ static void
       numCxSize2 = numCxSize2 + yd[p * numClass + i] * size[i];
     }
     radM1[p] = numCxSize1 / numC;
-    radM2[p] = pow((numCxSize2 / numC * IMaterial->cVol[pref]) / ((4. / 3.) * pi), (1. / 3.));
+    radM2[p] = std::cbrt((numCxSize2 / numC * IMaterial->cVol[pref]) / ((4. / 3.) * pi));
     rhoC[p] = numC / IMaterial->aVol; /*Calculate number density of clusters in unit of per m^3*/
   }
   return;
