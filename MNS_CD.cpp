@@ -1,20 +1,24 @@
-// Code developed by Huibin Ke from UW-Madison for the evolution of Mn-Ni-Si precipitates in Reactor Pressure Vessel
-// stees.
-#include <cmath>
-#include <cvode/cvode.h>      /* main integrator header file */
-#include <cvode/cvode_band.h> /* band solver header */
-#include <fstream>
-#include <nvector/nvector_serial.h> /* serial N_Vector types, fct. and macros */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sundials/sundials_math.h>  /* contains the macros ABS, SQR, and EXP */
-#include <sundials/sundials_types.h> /* definition of realtype */
-#include <time.h>
-
-#include <iostream>
+/**
+ * Code developed by Huibin Ke from UW-Madison for the evolution of Mn-Ni-Si
+ * precipitates in Reactor Pressure Vessel steels.
+ */
 
 #include "Constants.h" /*Constants header file*/
 #include "Input.h"     /*Input dd header file*/
+
+#include <cmath>
+#include <fstream>
+#include <iostream>
+// #include <stdio.h>
+// #include <stdlib.h>
+#include <time.h>
+
+// Sundals includes (requires version <= 2.7.0)
+#include <cvode/cvode.h>             /* main integrator header file */
+#include <cvode/cvode_band.h>        /* band solver header */
+#include <nvector/nvector_serial.h>  /* serial N_Vector types, fct. and macros */
+#include <sundials/sundials_math.h>  /* contains the macros ABS, SQR, and EXP */
+#include <sundials/sundials_types.h> /* definition of realtype */
 
 InputCondition ICond;    /*Defined in Input.h, including irradiation conditions*/
 InputMaterial IMaterial; /*Defined in Input.h, including material information*/
@@ -34,19 +38,18 @@ typedef struct
   realtype size[numClass], radClust[numPhase][numClass], beta[numPhase][numClass], delG[numPhase][numClass];
 } * UserData;
 
-static void loadData(UserData &data);
-static void getInitVals(realtype y0[neq]);
-static void initParams();
-static void GetRED(realtype D[numComp], realtype Flux);
-static void printYVector(N_Vector y);
-static void
-    getOutput(N_Vector y, realtype radM1[numCalcPhase], realtype radM2[numCalcPhase], realtype rhoC[numCalcPhase]);
-static void getbeta(realtype size[numClass], realtype beta[numPhase][numClass]);
-static void getSize(realtype size[numClass]);
-static void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass]);
-static void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], realtype delG[numPhase][numClass]);
-static void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1]);
-static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data);
+void loadData(UserData &data);
+void getInitVals(realtype y0[neq]);
+void initParams();
+void GetRED(realtype D[numComp], realtype Flux);
+void printYVector(N_Vector y);
+void getOutput(N_Vector y, realtype radM1[numCalcPhase], realtype radM2[numCalcPhase], realtype rhoC[numCalcPhase]);
+void getbeta(realtype size[numClass], realtype beta[numPhase][numClass]);
+void getSize(realtype size[numClass]);
+void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass]);
+void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], realtype delG[numPhase][numClass]);
+void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1]);
+int f(realtype t, N_Vector y, N_Vector ydot, void *user_data);
 void int_to_string(int i, string &a, int base);
 
 /*global problem parameters*/
@@ -134,6 +137,7 @@ int main()
     tout = std::pow(10, i / 9); /*Define the solution time for next run*/
   }
   N_VDestroy_Serial(y0);
+
   return 0;
 }
 
@@ -142,7 +146,7 @@ int main()
 This function initialize parameters used in model
 
 *************************************************/
-static void initParams()
+void initParams()
 {
   Flux = ICond->Flux; /*Irradiatio flux*/
   for (int i = 0; i < numComp; i++)
@@ -157,8 +161,6 @@ static void initParams()
   for (int p = 0; p < numPhase; p++)
     for (int c = 0; c < numComp; c++)
       nu[p][c] = sqr(IMaterial->X[p][c]); /*Square of precipitate composition*/
-
-  return;
 }
 
 /*****************************************************************
@@ -167,7 +169,7 @@ This function gives the radiation enhanced diffusion coefficients
 Described in SI Sec. C
 
 *****************************************************************/
-static void GetRED(realtype D[numComp], realtype Flux)
+void GetRED(realtype D[numComp], realtype Flux)
 {
   realtype Eta, Gs, Cvr;
 
@@ -197,7 +199,7 @@ This function loads data that is as a function of cluster size
 All values are calcuate via next few functions.
 
 *****************************************************************/
-static void loadData(UserData &data)
+void loadData(UserData &data)
 {
   realtype size[numClass], radClust[numPhase][numClass], beta[numPhase][numClass], delG[numPhase][numClass];
   getSize(size);
@@ -215,8 +217,6 @@ static void loadData(UserData &data)
       data->beta[p][i] = beta[p][i];
       data->delG[p][i] = delG[p][i];
     }
-
-  return;
 }
 
 /*****************************************************************
@@ -224,13 +224,11 @@ static void loadData(UserData &data)
 This function calculates part of the absorption rate
 
 *****************************************************************/
-static void getbeta(realtype size[numClass], realtype beta[numPhase][numClass])
+void getbeta(realtype size[numClass], realtype beta[numPhase][numClass])
 {
   for (int p = 0; p < numPhase; p++)
     for (int i = 0; i < numClass; i++)
       beta[p][i] = (4 * pi * aP[p] * std::cbrt(size[i])) / IMaterial->aVol;
-
-  return;
 }
 
 /*****************************************************************
@@ -239,12 +237,10 @@ This function calculates number of atoms (size) in each cluster
 
 *****************************************************************/
 
-static void getSize(realtype size[numClass])
+void getSize(realtype size[numClass])
 {
   for (int i = 0; i < numClass; i++)
     size[i] = double(i + 1);
-
-  return;
 }
 
 /*****************************************************************
@@ -253,14 +249,12 @@ This function calculates radius of each cluster
 
 *****************************************************************/
 
-static void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass])
+void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass])
 {
 
   for (int p = 0; p < numPhase; p++)
     for (int i = 0; i < numClass; i++)
       radClust[p][i] = std::cbrt(3 * IMaterial->cVol[p] * size[i] / (4 * pi));
-
-  return;
 }
 
 /*********************************************************************************
@@ -269,7 +263,7 @@ This function calculates difference of interfacial energy between adjacent clust
 
 **********************************************************************************/
 
-static void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], realtype delG[numPhase][numClass])
+void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], realtype delG[numPhase][numClass])
 {
   realtype delta;
 
@@ -280,8 +274,6 @@ static void getDelG(realtype size[numClass], realtype radClust[numPhase][numClas
                 (IMaterial->sig[p] * 4.0 * pi * sqr(radClust[p][i])));
       delG[p][i] = std::exp(delta / (kb * ICond->Temp));
     }
-
-  return;
 }
 
 /*****************************************************************
@@ -292,7 +284,7 @@ monomer concentration is calculated based on Eq. SI-15
 
 *****************************************************************/
 
-static void getInitVals(realtype y0[neq])
+void getInitVals(realtype y0[neq])
 {
   realtype base = 1E-30;
   for (int i = 0; i < neq; i++)
@@ -305,10 +297,10 @@ static void getInitVals(realtype y0[neq])
   {
     solProd[p] = 1;
     for (int c = 0; c < numComp; c++)
-      solProd[p] = solProd[p] * std::pow(IMaterial->C0[c], IMaterial->X[p][c]);
+      solProd[p] *= std::pow(IMaterial->C0[c], IMaterial->X[p][c]); /*SI-14*/
+
     y0[p * numClass] = solProd[p]; /*Effective monomer concentration, based on Eq. SI-15*/
   }
-  return;
 }
 
 /**************************************************************************
@@ -317,7 +309,7 @@ This function calculates flux (Jn->n+1) between adjacent clusters, Eq. SI-2
 
 ****************************************************************************/
 
-static void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
+void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
 {
   realtype *yd;
   yd = NV_DATA_S(y);
@@ -328,12 +320,12 @@ static void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass
   {
     solP[p] = 1;
     for (int c = 0; c < numComp; c++)
-      solP[p] = solP[p] * std::pow(yd[neq - numComp + c], IMaterial->X[p][c]); /*Calculate solute product*/
+      solP[p] *= std::pow(yd[neq - numComp + c], IMaterial->X[p][c]); /*Calculate solute product SI-14*/
   }
 
+  /*solute product for heterogeneous nucleation phase, used to calcuate effective monomer concentration*/
   for (int p = numPhase; p < numCalcPhase; p++)
-    solP[p] =
-        1E-30; /*solute product for heterogeneous nucleation phase, used to calcuate effective monomer concentration*/
+    solP[p] = 1E-30;
 
   for (int p = 0; p < numCalcPhase; p++)
   {
@@ -344,26 +336,33 @@ static void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass
     for (int c = 0; c < numComp; c++)
     {
       wp[c] = yd[neq - numComp + c] * D[c] * data->beta[pref][0];
-      sumwp = sumwp + (nu[pref][c] / wp[c]);
+      sumwp += nu[pref][c] / wp[c];
     }
-    wpEff = 1.0 / sumwp; /*Absorption rate for momoner to dimer*/
-    J[p][1] = wpEff * (yd[p * numClass] / numPhase - (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][1] *
-                                                         yd[p * numClass + 1]); /*flux from monomer to dimer*/
+
+    /*Absorption rate for momoner to dimer*/
+    wpEff = 1.0 / sumwp;
+
+    /*flux from monomer to dimer*/
+    J[p][1] = wpEff * (yd[p * numClass] / numPhase -
+                       (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][1] * yd[p * numClass + 1]);
+
     for (int i = 2; i < numClass; i++)
     {
       sumwp = 0;
       for (int c = 0; c < numComp; c++)
       {
         wp[c] = yd[neq - numComp + c] * D[c] * data->beta[pref][i - 1];
-        sumwp = sumwp + (nu[pref][c] / wp[c]);
+        sumwp += (nu[pref][c] / wp[c]);
       }
+
       wpEff = 1.0 / sumwp;
-      J[p][i] = wpEff * (yd[p * numClass + i - 1] - (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][i] *
-                                                        yd[p * numClass + i]); /*flux from size i to size i+1*/
+
+      /*flux from size i to size i+1*/
+      J[p][i] = wpEff * (yd[p * numClass + i - 1] -
+                         (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][i] * yd[p * numClass + i]);
     }
     J[p][numClass] = ZERO;
   }
-  return;
 }
 
 /**********************************************************************************
@@ -372,7 +371,7 @@ This function calculates Eq. SI-1, the change of concentration of each cluster s
 
 ***********************************************************************************/
 
-static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
+int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
 {
   realtype *yd, *ydotd;
   yd = NV_DATA_S(y);
@@ -396,24 +395,29 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     ydotd[p * numClass] = ZERO;
     for (int i = 1; i < numClass; i++)
     {
-      ydotd[p * numClass + i] = J[p][i] - J[p][i + 1];                   /*Eq. 1 in Sec. 2.1 without Rhet term*/
-      sumNdot[p] = sumNdot[p] + ydotd[p * numClass + i] * data->size[i]; /*Monomer consumed*/
+      ydotd[p * numClass + i] = J[p][i] - J[p][i + 1];       /*Eq. 1 in Sec. 2.1 without Rhet term*/
+      sumNdot[p] += ydotd[p * numClass + i] * data->size[i]; /*Monomer consumed*/
     }
   }
+
   for (int p = numPhase; p < numCalcPhase; p++)
   {
     pref = p % numPhase;
     solP[pref] = 1;
     for (int c = 0; c < numComp; c++)
-      solP[pref] = solP[pref] * std::pow(yd[neq - numComp + c], IMaterial->X[pref][c]); /*solute product*/
+      solP[pref] *= std::pow(yd[neq - numComp + c], IMaterial->X[pref][c]); /*solute product*/
   }
 
   /*The next three lines is the generation of clusters in cascade damage*/
-  GR = IProp->Alpha * Flux * IProp->ccs * solP[IProp->HGPhase] /
-       IProp->RsolP; /*Generation rate of clusters, Eq. 5 in Sec. 2.2*/
-  ydotd[(IProp->HGPhase + numPhase) * numClass + IProp->HGSize - 1] += GR; /*Add Rhet term to Eq. (1) in Sec. 2.1*/
-  sumNdot[(IProp->HGPhase + numPhase)] +=
-      GR * data->size[IProp->HGSize - 1]; /*Calculate the monomers consumed in heterogeneous nucleation*/
+
+  /*Generation rate of clusters, Eq. 5 in Sec. 2.2*/
+  GR = IProp->Alpha * Flux * IProp->ccs * solP[IProp->HGPhase] / IProp->RsolP;
+
+  /*Add Rhet term to Eq. (1) in Sec. 2.1*/
+  ydotd[(IProp->HGPhase + numPhase) * numClass + IProp->HGSize - 1] += GR;
+
+  /*Calculate the monomers consumed in heterogeneous nucleation*/
+  sumNdot[(IProp->HGPhase + numPhase)] += GR * data->size[IProp->HGSize - 1];
 
   for (int c = 0; c < numComp; c++)
   {
@@ -426,7 +430,7 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     ydotd[neq - numComp + c] = -Cdot; /*change of solute/monomer in matrix*/
   }
 
-  return (0);
+  return 0;
 }
 
 /*****************************************************************
@@ -435,8 +439,7 @@ This function calculates mean cluster radius and cluster density
 
 *****************************************************************/
 
-static void
-    getOutput(N_Vector y, realtype radM1[numCalcPhase], realtype radM2[numCalcPhase], realtype rhoC[numCalcPhase])
+void getOutput(N_Vector y, realtype radM1[numCalcPhase], realtype radM2[numCalcPhase], realtype rhoC[numCalcPhase])
 {
   realtype *yd, size[numClass], radClust[numPhase][numClass], numC, numCxSize1, numCxSize2;
   yd = NV_DATA_S(y);
@@ -465,7 +468,6 @@ static void
     radM2[p] = std::cbrt((numCxSize2 / numC * IMaterial->cVol[pref]) / ((4. / 3.) * pi));
     rhoC[p] = numC / IMaterial->aVol; /*Calculate number density of clusters in unit of per m^3*/
   }
-  return;
 }
 
 /**********************************************************************************************
@@ -473,7 +475,7 @@ static void
 This function prints cluster size distribution in the file Profile for the final solution time.
 
 ***********************************************************************************************/
-static void printYVector(N_Vector y)
+void printYVector(N_Vector y)
 {
   realtype *yd, size[numClass], radClust[numPhase][numClass];
   ofstream P_file;
@@ -496,7 +498,6 @@ static void printYVector(N_Vector y)
 
     P_file.close();
   }
-  return;
 }
 
 void int_to_string(int i, string &a, int base)
@@ -520,6 +521,4 @@ void int_to_string(int i, string &a, int base)
 
   for (ii = aa.size() - 1; ii >= 0; ii--)
     a.push_back(aa[ii]);
-
-  return;
 }
