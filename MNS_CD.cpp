@@ -3,32 +3,33 @@
  * precipitates in Reactor Pressure Vessel steels.
  */
 
-#include "Constants.h" /*Constants header file*/
-#include "Input.h"     /*Input dd header file*/
+#include "Constants.h" // Constants header file
+#include "Input.h"     // Input dd header file
 
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include <time.h>
 
-// Sundals includes (requires version <= 2.7.0)
-#include <cvode/cvode.h>             /* main integrator header file */
-#include <cvode/cvode_band.h>        /* band solver header */
-#include <nvector/nvector_serial.h>  /* serial N_Vector types, fct. and macros */
-#include <sundials/sundials_math.h>  /* contains the macros ABS, SQR, and EXP */
-#include <sundials/sundials_types.h> /* definition of realtype */
+// Sundials includes (requires version <= 2.7.0)
+#include <cvode/cvode.h>             // main integrator header file
+#include <cvode/cvode_band.h>        // band solver header
+#include <nvector/nvector_serial.h>  // serial N_Vector types, fct. and macros
+#include <sundials/sundials_math.h>  // contains the macros ABS, SQR, and EXP
+#include <sundials/sundials_types.h> // definition of realtype
 
-InputCondition ICond;    /*Defined in Input.h, including irradiation conditions*/
-InputMaterial IMaterial; /*Defined in Input.h, including material information*/
-InputProperty IProp;     /*Defined in Input.h, including all other parameters used in model*/
+InputCondition ICond;    // Defined in Input.h, including irradiation conditions
+InputMaterial IMaterial; // Defined in Input.h, including material information
+InputProperty IProp;     // Defined in Input.h, including all other parameters used in model
 
 double sqr(double a)
 {
   return a * a;
 }
 
-/*function defs*/
+// function defs
 
 typedef struct
 {
@@ -47,15 +48,16 @@ void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass])
 void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], realtype delG[numPhase][numClass]);
 void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1]);
 int f(realtype t, N_Vector y, N_Vector ydot, void *user_data);
-void int_to_string(int i, std::string &a, int base);
+std::string int_to_string(int i);
 
-/*global problem parameters*/
-realtype D[numComp], aP[numPhase],
-    nu[numPhase]
-      [numComp]; /*Diffusion coefficient,effective precipitate lattice constant, square of precipitate composition*/
-realtype rhoC[numCalcPhase], radM1[numCalcPhase],
-    radM2[numCalcPhase];          /*precipitate number density, two kinds of mean radius (see readme for more detail)*/
-realtype Flux, solProd[numPhase]; /*Irradiation flux, solute product */
+// global problem parameters
+
+// Diffusion coefficient,effective precipitate lattice constant, square of precipitate composition
+realtype D[numComp], aP[numPhase], nu[numPhase][numComp];
+// precipitate number density, two kinds of mean radius (see readme for more detail)
+realtype rhoC[numCalcPhase], radM1[numCalcPhase], radM2[numCalcPhase];
+// Irradiation flux, solute product
+realtype Flux, solProd[numPhase];
 
 int main()
 {
@@ -63,7 +65,7 @@ int main()
   realtype tout = 1E0; // This is the solution time of each run.  The solver will solve for y0(t) on the range (0,tout)
   double ts = 0.0;     // This is the start time for each run, tf+tout will be the final time ater each run
 
-  /*The following block setup the information for the solver and initial all the parameters*/
+  // The following block setup the information for the solver and initial all the parameters
   N_Vector y0 = NULL;
   ICond = NULL;
   IMaterial = NULL;
@@ -83,27 +85,25 @@ int main()
   getInitVals(y0data);
   y0 = N_VMake_Serial(neq, y0data);
 
-  /*Write the output file*/
+  // Write the output file
   std::ofstream O_file;
   O_file.open("Output");
   O_file << "Run\tCalcTime(s)\tTime(s)\tFluence(n/m2s)\t";
-  for (int p = 0; p < numPhase; p++)
+
+  for (int p = 0; p < numPhase; ++p)
   {
-    std::string phaseStr;
-    int_to_string(p + 1, phaseStr, 10);
-    std::cout << p << " " << p + 1 << " " << phaseStr << std::endl;
-    O_file << "Mean_Radius_of_Phase_" + phaseStr + "_Homo(m)\tNumber_Density_of_Phase_" + phaseStr + "_Homo(1/m3)\t";
+    std::cout << p << " " << (p + 1) << " " << (p + 1) << std::endl;
+    O_file << "Mean_Radius_of_Phase_" << (p + 1) << "_Homo(m)\tNumber_Density_of_Phase_" << (p + 1) << "_Homo(1/m3)\t";
   }
-  for (int p = 0; p < numPhase; p++)
-  {
-    std::string phaseStr;
-    int_to_string(p + 1, phaseStr, 10);
-    O_file << "Mean_Radius_of_Phase_" + phaseStr + "_Heter(m)\tNumber_Density_of_Phase_" + phaseStr + "_Heter(1/m3)\t";
-  }
+
+  for (int p = 0; p < numPhase; ++p)
+    O_file << "Mean_Radius_of_Phase_" << (p + 1) << "_Heter(m)\tNumber_Density_of_Phase_" << (p + 1)
+           << "_Heter(1/m3)\t";
+
   O_file << "Mn\tNi\tSi" << std::endl;
 
-  /*Solving all the equations, each run gives output at time ts+tout*/
-  for (int i = 0; i < runs; i++)
+  // Solving all the equations, each run gives output at time ts+tout
+  for (int i = 0; i < runs; ++i)
   {
     cvode_mem = CVodeCreate(CV_BDF, CV_NEWTON);
     data = (UserData)malloc(sizeof *data);
@@ -118,20 +118,23 @@ int main()
     time(&tik);
     flag = CVode(cvode_mem, tout, y0, &t, CV_NORMAL);
     time(&tok);
-    getOutput(y0, radM1, radM2, rhoC); /*Obtain the output after each run*/
+    getOutput(y0, radM1, radM2, rhoC); // Obtain the output after each run
     yd = NV_DATA_S(y0);
-    /*The following few lines write the output into file Output*/
-    O_file << i << "	" << difftime(tok, tik) << "	" << ts + tout << "	" << (ts + tout) * Flux << "	";
-    for (int p = 0; p < numCalcPhase; p++)
-    {
-      O_file << RadiusCalc[p] << "	" << rhoC[p] << "	";
-    }
-    O_file << yd[neq - 3] << "	" << yd[neq - 2] << "	" << yd[neq - 1];
+
+    // The following few lines write the output into file Output
+    O_file << i << "\t" << difftime(tok, tik) << "\t" << ts + tout << "\t" << (ts + tout) * Flux << "\t";
+    for (int p = 0; p < numCalcPhase; ++p)
+      O_file << RadiusCalc[p] << "\t" << rhoC[p] << "\t";
+
+    O_file << yd[neq - 3] << "\t" << yd[neq - 2] << "\t" << yd[neq - 1];
     O_file << std::endl;
-    printYVector(y0); /*Write the particle size distribution of each phase into a seperate file*/
+
+    // Write the particle size distribution of each phase into a seperate file
+    printYVector(y0);
+
     CVodeFree(&cvode_mem);
-    ts = ts + tout;             /*Calculate the start time of next run*/
-    tout = std::pow(10, i / 9); /*Define the solution time for next run*/
+    ts = ts + tout;             // Calculate the start time of next run
+    tout = std::pow(10, i / 9); // Define the solution time for next run
   }
   N_VDestroy_Serial(y0);
 
@@ -145,19 +148,24 @@ This function initialize parameters used in model
 *************************************************/
 void initParams()
 {
-  Flux = ICond->Flux; /*Irradiatio flux*/
-  for (int i = 0; i < numComp; i++)
-  {
-    D[i] = IMaterial->D[i]; /*Thermal diffusion coefficients*/
-  }
-  GetRED(D, Flux); /*Calculate radiation enhanced diffusion coefficients*/
+  // Irradiatio flux
+  Flux = ICond->Flux;
 
-  for (int p = 0; p < numPhase; p++)
-    aP[p] = std::cbrt((3 * IMaterial->cVol[p]) / (4 * pi)); /*Effective atomic radius in precipitate*/
+  for (int i = 0; i < numComp; ++i)
+    // Thermal diffusion coefficients
+    D[i] = IMaterial->D[i];
 
-  for (int p = 0; p < numPhase; p++)
+  // Calculate radiation enhanced diffusion coefficients
+  GetRED(D, Flux);
+
+  for (int p = 0; p < numPhase; ++p)
+    // Effective atomic radius in precipitate
+    aP[p] = std::cbrt((3 * IMaterial->cVol[p]) / (4 * pi));
+
+  for (int p = 0; p < numPhase; ++p)
     for (int c = 0; c < numComp; c++)
-      nu[p][c] = sqr(IMaterial->X[p][c]); /*Square of precipitate composition*/
+      // Square of precipitate composition
+      nu[p][c] = sqr(IMaterial->X[p][c]);
 }
 
 /*****************************************************************
@@ -170,24 +178,26 @@ void GetRED(realtype D[numComp], realtype Flux)
 {
   realtype Eta, Gs, Cvr;
 
-  /*When flux is higher than reference flux, use p-scaling (Eq. SI-18) to calculate gs*/
   if (Flux > IProp->Rflux)
   {
+    // When flux is higher than reference flux, use p-scaling (Eq. SI-18) to calculate gs
     Eta = 16 * pi * IProp->rv * IProp->DCB * IProp->SigmaDpa * IProp->Rflux / IMaterial->aVol / IProp->DV /
           sqr(IProp->DDP);
     Gs = 2.0 / Eta * (std::sqrt(1 + Eta) - 1.0) * std::pow((IProp->Rflux / Flux), IProp->p_factor);
-  } /*When flux is lower than reference flux, use Eq. SI-19 and SI-20 to calculate gs*/
+  }
   else
   {
+    // When flux is lower than reference flux, use Eq. SI-19 and SI-20 to calculate gs
     Eta = 16 * pi * IProp->rv * IProp->DCB * IProp->SigmaDpa * Flux / IMaterial->aVol / IProp->DV / sqr(IProp->DDP);
     Gs = 2.0 / Eta * (std::sqrt(1 + Eta) - 1.0);
   }
 
-  Cvr = IProp->DCB * Flux * IProp->SigmaDpa * Gs /
-        (IProp->DV * IProp->DDP); /*Calculate vacancy concentration under irradiation, Eq. SI-17*/
+  // Calculate vacancy concentration under irradiation, Eq. SI-17
+  Cvr = IProp->DCB * Flux * IProp->SigmaDpa * Gs / (IProp->DV * IProp->DDP);
 
-  for (int i = 0; i < numComp; i++)
-    D[i] = D[i] + IProp->DV * Cvr * D[i] / IMaterial->DFe; /*Radiation enhanced diffusion coefficients, Eq. SI-16*/
+  for (int i = 0; i < numComp; ++i)
+    // Radiation enhanced diffusion coefficients, Eq. SI-16
+    D[i] = D[i] + IProp->DV * Cvr * D[i] / IMaterial->DFe;
 }
 
 /*****************************************************************
@@ -204,11 +214,11 @@ void loadData(UserData &data)
   getbeta(size, beta);
   getDelG(size, radClust, delG);
 
-  for (int i = 0; i < numClass; i++)
+  for (int i = 0; i < numClass; ++i)
     data->size[i] = size[i];
 
-  for (int p = 0; p < numPhase; p++)
-    for (int i = 0; i < numClass; i++)
+  for (int p = 0; p < numPhase; ++p)
+    for (int i = 0; i < numClass; ++i)
     {
       data->radClust[p][i] = radClust[p][i];
       data->beta[p][i] = beta[p][i];
@@ -223,8 +233,8 @@ This function calculates part of the absorption rate
 *****************************************************************/
 void getbeta(realtype size[numClass], realtype beta[numPhase][numClass])
 {
-  for (int p = 0; p < numPhase; p++)
-    for (int i = 0; i < numClass; i++)
+  for (int p = 0; p < numPhase; ++p)
+    for (int i = 0; i < numClass; ++i)
       beta[p][i] = (4 * pi * aP[p] * std::cbrt(size[i])) / IMaterial->aVol;
 }
 
@@ -236,7 +246,7 @@ This function calculates number of atoms (size) in each cluster
 
 void getSize(realtype size[numClass])
 {
-  for (int i = 0; i < numClass; i++)
+  for (int i = 0; i < numClass; ++i)
     size[i] = double(i + 1);
 }
 
@@ -249,9 +259,9 @@ This function calculates radius of each cluster
 void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass])
 {
 
-  for (int p = 0; p < numPhase; p++)
-    for (int i = 0; i < numClass; i++)
-      radClust[p][i] = std::cbrt(3 * IMaterial->cVol[p] * size[i] / (4 * pi));
+  for (int p = 0; p < numPhase; ++p)
+    for (int i = 0; i < numClass; ++i)
+      radClust[p][i] = std::cbrt(3.0 * IMaterial->cVol[p] * size[i] / (4.0 * pi));
 }
 
 /*********************************************************************************
@@ -264,8 +274,8 @@ void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], rea
 {
   realtype delta;
 
-  for (int p = 0; p < numPhase; p++)
-    for (int i = 1; i < numClass; i++)
+  for (int p = 0; p < numPhase; ++p)
+    for (int i = 1; i < numClass; ++i)
     {
       delta = -((IMaterial->sig[p] * 4.0 * pi * sqr(radClust[p][i - 1])) -
                 (IMaterial->sig[p] * 4.0 * pi * sqr(radClust[p][i])));
@@ -284,19 +294,21 @@ monomer concentration is calculated based on Eq. SI-15
 void getInitVals(realtype y0[neq])
 {
   realtype base = 1E-30;
-  for (int i = 0; i < neq; i++)
+  for (int i = 0; i < neq; ++i)
     y0[i] = base;
 
   for (int c = 0; c < numComp; c++)
-    y0[neq - numComp + c] = IMaterial->C0[c]; /*Concentration of solute in matrix*/
+    // Concentration of solute in matrix
+    y0[neq - numComp + c] = IMaterial->C0[c];
 
-  for (int p = 0; p < numPhase; p++)
+  for (int p = 0; p < numPhase; ++p)
   {
     solProd[p] = 1;
     for (int c = 0; c < numComp; c++)
-      solProd[p] *= std::pow(IMaterial->C0[c], IMaterial->X[p][c]); /*SI-14*/
+      solProd[p] *= std::pow(IMaterial->C0[c], IMaterial->X[p][c]); // SI-14
 
-    y0[p * numClass] = solProd[p]; /*Effective monomer concentration, based on Eq. SI-15*/
+    // Effective monomer concentration, based on Eq. SI-15
+    y0[p * numClass] = solProd[p];
   }
 }
 
@@ -311,24 +323,27 @@ void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
   realtype *yd;
   yd = NV_DATA_S(y);
   realtype solP[numCalcPhase], wp[numComp], sumwp, wpEff;
-  int pref; /*pref is used to refer to the real phase for both homo and heter nucleated phases, pref=0 is T3 phase,
-               pref=1 is T6 phase*/
-  for (int p = 0; p < numPhase; p++)
+
+  // pref is used to refer to the real phase for both homo and heter nucleated phases,
+  // pref=0 is T3 phase, pref=1 is T6 phase
+  int pref;
+  for (int p = 0; p < numPhase; ++p)
   {
     solP[p] = 1;
     for (int c = 0; c < numComp; c++)
-      solP[p] *= std::pow(yd[neq - numComp + c], IMaterial->X[p][c]); /*Calculate solute product SI-14*/
+      solP[p] *= std::pow(yd[neq - numComp + c], IMaterial->X[p][c]); // Calculate solute product SI-14
   }
 
-  /*solute product for heterogeneous nucleation phase, used to calcuate effective monomer concentration*/
-  for (int p = numPhase; p < numCalcPhase; p++)
+  // solute product for heterogeneous nucleation phase, used to calcuate effective monomer concentration
+  for (int p = numPhase; p < numCalcPhase; ++p)
     solP[p] = 1E-30;
 
-  for (int p = 0; p < numCalcPhase; p++)
+  for (int p = 0; p < numCalcPhase; ++p)
   {
     pref = p % numPhase;
     J[p][0] = ZERO;
-    yd[p * numClass] = solP[p]; /*Effective monomer concentration*/
+    // Effective monomer concentration
+    yd[p * numClass] = solP[p];
     sumwp = 0;
     for (int c = 0; c < numComp; c++)
     {
@@ -336,14 +351,14 @@ void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
       sumwp += nu[pref][c] / wp[c];
     }
 
-    /*Absorption rate for momoner to dimer*/
+    // Absorption rate for momoner to dimer
     wpEff = 1.0 / sumwp;
 
-    /*flux from monomer to dimer*/
+    // flux from monomer to dimer
     J[p][1] = wpEff * (yd[p * numClass] / numPhase -
                        (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][1] * yd[p * numClass + 1]);
 
-    for (int i = 2; i < numClass; i++)
+    for (int i = 2; i < numClass; ++i)
     {
       sumwp = 0;
       for (int c = 0; c < numComp; c++)
@@ -354,7 +369,7 @@ void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
 
       wpEff = 1.0 / sumwp;
 
-      /*flux from size i to size i+1*/
+      // flux from size i to size i+1
       J[p][i] = wpEff * (yd[p * numClass + i - 1] -
                          (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][i] * yd[p * numClass + i]);
     }
@@ -386,45 +401,45 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
   getFlux(data, y, J);
 
   realtype sumNdot[numCalcPhase], Cdot;
-  for (int p = 0; p < numCalcPhase; p++)
+  for (int p = 0; p < numCalcPhase; ++p)
   {
     sumNdot[p] = ZERO;
     ydotd[p * numClass] = ZERO;
-    for (int i = 1; i < numClass; i++)
+    for (int i = 1; i < numClass; ++i)
     {
-      ydotd[p * numClass + i] = J[p][i] - J[p][i + 1];       /*Eq. 1 in Sec. 2.1 without Rhet term*/
-      sumNdot[p] += ydotd[p * numClass + i] * data->size[i]; /*Monomer consumed*/
+      ydotd[p * numClass + i] = J[p][i] - J[p][i + 1];       // Eq. 1 in Sec. 2.1 without Rhet term
+      sumNdot[p] += ydotd[p * numClass + i] * data->size[i]; // Monomer consumed
     }
   }
 
-  for (int p = numPhase; p < numCalcPhase; p++)
+  for (int p = numPhase; p < numCalcPhase; ++p)
   {
     pref = p % numPhase;
     solP[pref] = 1;
     for (int c = 0; c < numComp; c++)
-      solP[pref] *= std::pow(yd[neq - numComp + c], IMaterial->X[pref][c]); /*solute product*/
+      solP[pref] *= std::pow(yd[neq - numComp + c], IMaterial->X[pref][c]); // solute product
   }
 
-  /*The next three lines is the generation of clusters in cascade damage*/
+  // The next three lines is the generation of clusters in cascade damage
 
-  /*Generation rate of clusters, Eq. 5 in Sec. 2.2*/
+  // Generation rate of clusters, Eq. 5 in Sec. 2.2
   GR = IProp->Alpha * Flux * IProp->ccs * solP[IProp->HGPhase] / IProp->RsolP;
 
-  /*Add Rhet term to Eq. (1) in Sec. 2.1*/
+  // Add Rhet term to Eq. (1) in Sec. 2.1
   ydotd[(IProp->HGPhase + numPhase) * numClass + IProp->HGSize - 1] += GR;
 
-  /*Calculate the monomers consumed in heterogeneous nucleation*/
+  // Calculate the monomers consumed in heterogeneous nucleation
   sumNdot[(IProp->HGPhase + numPhase)] += GR * data->size[IProp->HGSize - 1];
 
   for (int c = 0; c < numComp; c++)
   {
-    Cdot = 0;
-    for (int p = 0; p < numCalcPhase; p++)
+    Cdot = 0.0;
+    for (int p = 0; p < numCalcPhase; ++p)
     {
       pref = p % numPhase;
-      Cdot = Cdot + IMaterial->X[pref][c] * sumNdot[p];
+      Cdot += IMaterial->X[pref][c] * sumNdot[p];
     }
-    ydotd[neq - numComp + c] = -Cdot; /*change of solute/monomer in matrix*/
+    ydotd[neq - numComp + c] = -Cdot; // change of solute/monomer in matrix
   }
 
   return 0;
@@ -443,27 +458,35 @@ void getOutput(N_Vector y, realtype radM1[numCalcPhase], realtype radM2[numCalcP
   int pref;
   getSize(size);
   getRadClust(size, radClust);
-  for (int p = 0; p < numCalcPhase; p++)
+  for (int p = 0; p < numCalcPhase; ++p)
   {
     pref = p % numPhase;
-    numC = 0; /*Concertration of clusters in unit per lattice site*/
+
+    // Concertration of clusters in unit per lattice site
+    numC = 0;
     numCxSize1 = 0;
     numCxSize2 = 0;
-    radM1[p] = 0; /*Mean radius of clusters calculated via sum(r_i*N_i)/sum(N_i)*/ /*refer to readme for details
-                                                                                      regarding these two different ways
-                                                                                      of calculating mean radius*/
-    radM2[p] =
-        0; /*Mean radius of clusters calculated via equilivant radius of a cluster with size sum(n_i*N_i)/sum(N_i)*/
+
+    // Mean radius of clusters calculated via sum(r_i*N_i)/sum(N_i)
+    // refer to readme for details regarding these two different ways of calculating mean radius
+    radM1[p] = 0;
+
+    // Mean radius of clusters calculated via equilivant radius of a cluster with size sum(n_i*N_i)/sum(N_i)
+    radM2[p] = 0;
     rhoC[p] = 0;
-    for (int i = CutoffSize; i < numClass; i++)
-    { /*Count clusters larger than CutoffSize for output*/
-      numC = numC + yd[p * numClass + i];
-      numCxSize1 = numCxSize1 + yd[p * numClass + i] * radClust[pref][i];
-      numCxSize2 = numCxSize2 + yd[p * numClass + i] * size[i];
+
+    for (int i = CutoffSize; i < numClass; ++i)
+    {
+      // Count clusters larger than CutoffSize for output
+      numC += yd[p * numClass + i];
+      numCxSize1 += yd[p * numClass + i] * radClust[pref][i];
+      numCxSize2 += yd[p * numClass + i] * size[i];
     }
     radM1[p] = numCxSize1 / numC;
     radM2[p] = std::cbrt((numCxSize2 / numC * IMaterial->cVol[pref]) / ((4. / 3.) * pi));
-    rhoC[p] = numC / IMaterial->aVol; /*Calculate number density of clusters in unit of per m^3*/
+
+    // Calculate number density of clusters in unit of per m^3
+    rhoC[p] = numC / IMaterial->aVol;
   }
 }
 
@@ -479,43 +502,25 @@ void printYVector(N_Vector y)
   yd = NV_DATA_S(y);
   int pref;
 
-  for (int p = 0; p < numCalcPhase; p++)
+  for (int p = 0; p < numCalcPhase; ++p)
   {
-    pref = p % numPhase;
-    std::string profStr = "Profile_";
-    std::string phaseStr;
-    int_to_string(p, phaseStr, 10);
-    profStr.append(phaseStr);
-    P_file.open(profStr.c_str());
-    P_file << "cluster size (# atoms)	cluster radius (m)	cluster density (1/m3)" << std::endl;
+    P_file.open(("Profile_" + int_to_string(p)).c_str());
+    P_file << "cluster size (# atoms)\tcluster radius (m)\tcluster density (1/m3)" << std::endl;
+
     getSize(size);
     getRadClust(size, radClust);
-    for (int i = 0; i < numClass; i++)
-      P_file << size[i] << "	" << radClust[pref][i] << "	" << yd[p * numClass + i] / IMaterial->aVol << std::endl;
+
+    pref = p % numPhase;
+    for (int i = 0; i < numClass; ++i)
+      P_file << size[i] << "\t" << radClust[pref][i] << "\t" << yd[p * numClass + i] / IMaterial->aVol << std::endl;
 
     P_file.close();
   }
 }
 
-void int_to_string(int i, std::string &a, int base)
+std::string int_to_string(int i)
 {
-  int ii = i;
-  std::string aa;
-  int remain = ii % base;
-
-  if (ii == 0)
-  {
-    a.push_back(ii + 48);
-    return;
-  }
-
-  while (ii > 0)
-  {
-    aa.push_back(ii % base + 48);
-    ii = (ii - remain) / base;
-    remain = ii % base;
-  }
-
-  for (ii = aa.size() - 1; ii >= 0; ii--)
-    a.push_back(aa[ii]);
+  std::stringstream ss;
+  ss << i;
+  return ss.str();
 }
