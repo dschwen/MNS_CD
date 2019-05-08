@@ -1,8 +1,8 @@
+#pragma once
+
 #include "Constants.h"
 #include <sundials/sundials_types.h> /* definition of type realtype */
 
-#ifndef Input_h
-#define Input_h
 typedef struct InputMaterialType
 {
   realtype aLat, aVol, C0[numComp], D[numComp], DFe, X[numPhase][numComp], aP[numPhase], cVol[numPhase], sig[numPhase],
@@ -19,4 +19,3 @@ typedef struct InputPropertyType
 } * InputProperty; // Cascade efficiency, v-i recombination radius, binding energy of di-vacancies, dislocation
                    // densities
 void LoadInput(InputCondition ICond, InputMaterial IMaterial, InputProperty IProp);
-#endif

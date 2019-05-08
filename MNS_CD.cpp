@@ -341,7 +341,7 @@ void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
   for (int p = 0; p < numCalcPhase; ++p)
   {
     pref = p % numPhase;
-    J[p][0] = ZERO;
+    J[p][0] = 0.0;
     // Effective monomer concentration
     yd[p * numClass] = solP[p];
     sumwp = 0;
@@ -373,7 +373,7 @@ void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1])
       J[p][i] = wpEff * (yd[p * numClass + i - 1] -
                          (IMaterial->solPBar[pref] / solP[pref]) * data->delG[pref][i] * yd[p * numClass + i]);
     }
-    J[p][numClass] = ZERO;
+    J[p][numClass] = 0.0;
   }
 }
 
@@ -403,8 +403,8 @@ int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
   realtype sumNdot[numCalcPhase], Cdot;
   for (int p = 0; p < numCalcPhase; ++p)
   {
-    sumNdot[p] = ZERO;
-    ydotd[p * numClass] = ZERO;
+    sumNdot[p] = 0.0;
+    ydotd[p * numClass] = 0.0;
     for (int i = 1; i < numClass; ++i)
     {
       ydotd[p * numClass + i] = J[p][i] - J[p][i + 1];       // Eq. 1 in Sec. 2.1 without Rhet term
