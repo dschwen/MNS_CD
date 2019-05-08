@@ -9,8 +9,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-// #include <stdio.h>
-// #include <stdlib.h>
+
 #include <time.h>
 
 // Sundals includes (requires version <= 2.7.0)
@@ -23,8 +22,6 @@
 InputCondition ICond;    /*Defined in Input.h, including irradiation conditions*/
 InputMaterial IMaterial; /*Defined in Input.h, including material information*/
 InputProperty IProp;     /*Defined in Input.h, including all other parameters used in model*/
-
-using namespace std;
 
 double sqr(double a)
 {
@@ -50,7 +47,7 @@ void getRadClust(realtype size[numClass], realtype radClust[numPhase][numClass])
 void getDelG(realtype size[numClass], realtype radClust[numPhase][numClass], realtype delG[numPhase][numClass]);
 void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass + 1]);
 int f(realtype t, N_Vector y, N_Vector ydot, void *user_data);
-void int_to_string(int i, string &a, int base);
+void int_to_string(int i, std::string &a, int base);
 
 /*global problem parameters*/
 realtype D[numComp], aP[numPhase],
@@ -87,23 +84,23 @@ int main()
   y0 = N_VMake_Serial(neq, y0data);
 
   /*Write the output file*/
-  ofstream O_file;
+  std::ofstream O_file;
   O_file.open("Output");
   O_file << "Run\tCalcTime(s)\tTime(s)\tFluence(n/m2s)\t";
   for (int p = 0; p < numPhase; p++)
   {
-    string phaseStr;
+    std::string phaseStr;
     int_to_string(p + 1, phaseStr, 10);
-    cout << p << " " << p + 1 << " " << phaseStr << endl;
+    std::cout << p << " " << p + 1 << " " << phaseStr << std::endl;
     O_file << "Mean_Radius_of_Phase_" + phaseStr + "_Homo(m)\tNumber_Density_of_Phase_" + phaseStr + "_Homo(1/m3)\t";
   }
   for (int p = 0; p < numPhase; p++)
   {
-    string phaseStr;
+    std::string phaseStr;
     int_to_string(p + 1, phaseStr, 10);
     O_file << "Mean_Radius_of_Phase_" + phaseStr + "_Heter(m)\tNumber_Density_of_Phase_" + phaseStr + "_Heter(1/m3)\t";
   }
-  O_file << "Mn\tNi\tSi" << endl;
+  O_file << "Mn\tNi\tSi" << std::endl;
 
   /*Solving all the equations, each run gives output at time ts+tout*/
   for (int i = 0; i < runs; i++)
@@ -130,7 +127,7 @@ int main()
       O_file << RadiusCalc[p] << "	" << rhoC[p] << "	";
     }
     O_file << yd[neq - 3] << "	" << yd[neq - 2] << "	" << yd[neq - 1];
-    O_file << endl;
+    O_file << std::endl;
     printYVector(y0); /*Write the particle size distribution of each phase into a seperate file*/
     CVodeFree(&cvode_mem);
     ts = ts + tout;             /*Calculate the start time of next run*/
@@ -478,32 +475,32 @@ This function prints cluster size distribution in the file Profile for the final
 void printYVector(N_Vector y)
 {
   realtype *yd, size[numClass], radClust[numPhase][numClass];
-  ofstream P_file;
+  std::ofstream P_file;
   yd = NV_DATA_S(y);
   int pref;
 
   for (int p = 0; p < numCalcPhase; p++)
   {
     pref = p % numPhase;
-    string profStr = "Profile_";
-    string phaseStr;
+    std::string profStr = "Profile_";
+    std::string phaseStr;
     int_to_string(p, phaseStr, 10);
     profStr.append(phaseStr);
     P_file.open(profStr.c_str());
-    P_file << "cluster size (# atoms)	cluster radius (m)	cluster density (1/m3)" << endl;
+    P_file << "cluster size (# atoms)	cluster radius (m)	cluster density (1/m3)" << std::endl;
     getSize(size);
     getRadClust(size, radClust);
     for (int i = 0; i < numClass; i++)
-      P_file << size[i] << "	" << radClust[pref][i] << "	" << yd[p * numClass + i] / IMaterial->aVol << endl;
+      P_file << size[i] << "	" << radClust[pref][i] << "	" << yd[p * numClass + i] / IMaterial->aVol << std::endl;
 
     P_file.close();
   }
 }
 
-void int_to_string(int i, string &a, int base)
+void int_to_string(int i, std::string &a, int base)
 {
   int ii = i;
-  string aa;
+  std::string aa;
   int remain = ii % base;
 
   if (ii == 0)
