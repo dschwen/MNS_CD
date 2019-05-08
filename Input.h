@@ -16,7 +16,7 @@ typedef struct InputPropertyType
 {
   int HGSize, HGPhase;
   realtype Alpha, RsolP, ccs, Rflux, p_factor, DDP, DCB, SigmaDpa, DV, rv;
-} * InputProperty; // Cascade efficiency, v-i recombination radius,binding energy of di-vacancyies, dislocation
+} * InputProperty; // Cascade efficiency, v-i recombination radius, binding energy of di-vacancies, dislocation
                    // densities
 void LoadInput(InputCondition ICond, InputMaterial IMaterial, InputProperty IProp);
 #endif

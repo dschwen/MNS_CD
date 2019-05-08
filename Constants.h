@@ -16,7 +16,7 @@
 #define RadiusCalc radM2 // Method to calculate mean radius of precipitate, radM1 or radM2
 #define T0 ZERO          // Initial time
 
-#define numCalcPhase (numPhase * 2) // number of calculating phases,including both home and heter nucleated phases
+#define numCalcPhase (numPhase * 2) // number of calculating phases, including both homo and hetero nucleated phases
 #define neq (numCalcPhase * numClass + numComp) // number of ODEs
 
 #define RTOL RCONST(1.0E-6) // rel tolerance

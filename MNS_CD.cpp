@@ -14,7 +14,7 @@
 #include <iostream>
 
 #include "Constants.h" /*Constants header file*/
-#include "Input.h"     /*Input parameter header file*/
+#include "Input.h"     /*Input dd header file*/
 
 InputCondition ICond;    /*Defined in Input.h, including irradiation conditions*/
 InputMaterial IMaterial; /*Defined in Input.h, including material information*/
@@ -54,7 +54,6 @@ realtype Flux, solProd[numPhase]; /*Irradiation flux, solute product */
 
 int main()
 {
-
   realtype y0data[neq], t;
   realtype tout = 1E0; // This is the solution time of each run.  The solver will solve for y0(t) on the range (0,tout)
   double ts = 0.0;     // This is the start time for each run, tf+tout will be the final time ater each run
@@ -146,17 +145,13 @@ static void initParams()
     D[i] = IMaterial->D[i]; /*Thermal diffusion coefficients*/
   }
   GetRED(D, Flux); /*Calculate radiation enhanced diffusion coefficients*/
+
   for (int p = 0; p < numPhase; p++)
-  {
     aP[p] = pow((3 * IMaterial->cVol[p]) / (4 * pi), 1. / 3.); /*Effective atomic radius in precipitate*/
-  }
+
   for (int p = 0; p < numPhase; p++)
-  {
     for (int c = 0; c < numComp; c++)
-    {
       nu[p][c] = pow(IMaterial->X[p][c], 2); /*Square of precipitate composition*/
-    }
-  }
 
   return;
 }
@@ -183,12 +178,12 @@ static void GetRED(realtype D[numComp], realtype Flux)
     Eta = 16 * pi * IProp->rv * IProp->DCB * IProp->SigmaDpa * Flux / IMaterial->aVol / IProp->DV / pow(IProp->DDP, 2);
     Gs = 2.0 / Eta * (pow(1 + Eta, 0.5) - 1.0);
   }
+
   Cvr = IProp->DCB * Flux * IProp->SigmaDpa * Gs /
         (IProp->DV * IProp->DDP); /*Calculate vacancy concentration under irradiation, Eq. SI-17*/
+
   for (int i = 0; i < numComp; i++)
-  {
     D[i] = D[i] + IProp->DV * Cvr * D[i] / IMaterial->DFe; /*Radiation enhanced diffusion coefficients, Eq. SI-16*/
-  }
 }
 
 /*****************************************************************
@@ -206,19 +201,15 @@ static void loadData(UserData &data)
   getDelG(size, radClust, delG);
 
   for (int i = 0; i < numClass; i++)
-  {
     data->size[i] = size[i];
-  }
 
   for (int p = 0; p < numPhase; p++)
-  {
     for (int i = 0; i < numClass; i++)
     {
       data->radClust[p][i] = radClust[p][i];
       data->beta[p][i] = beta[p][i];
       data->delG[p][i] = delG[p][i];
     }
-  }
 
   return;
 }
@@ -231,12 +222,8 @@ This function calculates part of the absorption rate
 static void getbeta(realtype size[numClass], realtype beta[numPhase][numClass])
 {
   for (int p = 0; p < numPhase; p++)
-  {
     for (int i = 0; i < numClass; i++)
-    {
       beta[p][i] = (4 * pi * aP[p] * pow(size[i], (1. / 3.))) / IMaterial->aVol;
-    }
-  }
 
   return;
 }
@@ -250,9 +237,8 @@ This function calculates number of atoms (size) in each cluster
 static void getSize(realtype size[numClass])
 {
   for (int i = 0; i < numClass; i++)
-  {
     size[i] = double(i + 1);
-  }
+
   return;
 }
 
@@ -266,12 +252,9 @@ static void getRadClust(realtype size[numClass], realtype radClust[numPhase][num
 {
 
   for (int p = 0; p < numPhase; p++)
-  {
     for (int i = 0; i < numClass; i++)
-    {
       radClust[p][i] = pow(3 * IMaterial->cVol[p] * size[i] / (4 * pi), 1. / 3.);
-    }
-  }
+
   return;
 }
 
@@ -286,14 +269,13 @@ static void getDelG(realtype size[numClass], realtype radClust[numPhase][numClas
   realtype delta;
 
   for (int p = 0; p < numPhase; p++)
-  {
     for (int i = 1; i < numClass; i++)
     {
       delta = -((IMaterial->sig[p] * 4 * pi * pow(radClust[p][i - 1], TWO)) -
                 (IMaterial->sig[p] * 4 * pi * pow(radClust[p][i], TWO)));
       delG[p][i] = exp(delta / (kb * ICond->Temp));
     }
-  }
+
   return;
 }
 
@@ -309,20 +291,16 @@ static void getInitVals(realtype y0[neq])
 {
   realtype base = 1E-30;
   for (int i = 0; i < neq; i++)
-  {
     y0[i] = base;
-  }
+
   for (int c = 0; c < numComp; c++)
-  {
     y0[neq - numComp + c] = IMaterial->C0[c]; /*Concentration of solute in matrix*/
-  }
+
   for (int p = 0; p < numPhase; p++)
   {
     solProd[p] = 1;
     for (int c = 0; c < numComp; c++)
-    {
       solProd[p] = solProd[p] * pow(IMaterial->C0[c], IMaterial->X[p][c]);
-    }
     y0[p * numClass] = solProd[p]; /*Effective monomer concentration, based on Eq. SI-15*/
   }
   return;
@@ -345,15 +323,13 @@ static void getFlux(UserData data, N_Vector y, realtype J[numCalcPhase][numClass
   {
     solP[p] = 1;
     for (int c = 0; c < numComp; c++)
-    {
       solP[p] = solP[p] * pow(yd[neq - numComp + c], IMaterial->X[p][c]); /*Calculate solute product*/
-    }
   }
+
   for (int p = numPhase; p < numCalcPhase; p++)
-  {
     solP[p] =
         1E-30; /*solute product for heterogeneous nucleation phase, used to calcuate effective monomer concentration*/
-  }
+
   for (int p = 0; p < numCalcPhase; p++)
   {
     pref = p % numPhase;
@@ -424,9 +400,7 @@ static int f(realtype t, N_Vector y, N_Vector ydot, void *user_data)
     pref = p % numPhase;
     solP[pref] = 1;
     for (int c = 0; c < numComp; c++)
-    {
       solP[pref] = solP[pref] * pow(yd[neq - numComp + c], IMaterial->X[pref][c]); /*solute product*/
-    }
   }
 
   /*The next three lines is the generation of clusters in cascade damage*/
@@ -513,9 +487,8 @@ static void printYVector(N_Vector y)
     getSize(size);
     getRadClust(size, radClust);
     for (int i = 0; i < numClass; i++)
-    {
       P_file << size[i] << "	" << radClust[pref][i] << "	" << yd[p * numClass + i] / IMaterial->aVol << endl;
-    }
+
     P_file.close();
   }
   return;
@@ -539,9 +512,9 @@ void int_to_string(int i, string &a, int base)
     ii = (ii - remain) / base;
     remain = ii % base;
   }
+
   for (ii = aa.size() - 1; ii >= 0; ii--)
-  {
     a.push_back(aa[ii]);
-  }
+
   return;
 }
